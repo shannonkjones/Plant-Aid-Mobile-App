@@ -30,6 +30,11 @@ const linking: LinkingOptions<RootStackParamList> = {
               LocationScreen: 'location',
             },
           },
+          Camera: {
+            screens: {
+              CameraScreen: 'camera',
+            },
+          },
         },
       },
       Modal: 'modal',

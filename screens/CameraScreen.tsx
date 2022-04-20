@@ -5,11 +5,14 @@ import EditScreenInfo from '../components/EditScreenInfo';
 import { Text, View } from '../components/Themed';
 import { RootTabScreenProps } from '../types';
 
-import { Camera } from 'expo-camera';
+import { Camera, CameraCapturedPicture } from 'expo-camera';
 
 export default function CameraScreen({ navigation }: RootTabScreenProps<'Location'>) {
 	const [hasPermission, setHasPermission] = useState<boolean>();
 	const [type, setType] = useState(Camera.Constants.Type.back);
+
+  const [camera, setCamera] = useState<Camera>();
+  const [photo, setPhoto] = useState<CameraCapturedPicture>();
 
   useEffect(() => {
     (async () => {
@@ -18,18 +21,35 @@ export default function CameraScreen({ navigation }: RootTabScreenProps<'Locatio
     })();
   }, []);
 
+  const snap = async () => {
+    if (camera) {
+      let photo = await camera.takePictureAsync();
+      setPhoto(photo);
+    }
+  }
+
   if (hasPermission === null) {
     return <View />;
   }
   if (hasPermission === false) {
     return <Text>No access to camera</Text>;
   }
+  if (photo) {
+    return 
+  }
 
   return (
     <View style={styles.container}>
-      <Camera type={type}>
-        <View >
+      <Camera style={styles.camera}
+      type={type}
+      ref={ref => {
+        if (ref) {
+          setCamera(ref);
+        }
+      }}>
+        <View style={styles.buttonContainer}>
           <TouchableOpacity
+            style={styles.button}
             onPress={() => {
               setType(
                 type === Camera.Constants.Type.back
@@ -37,7 +57,14 @@ export default function CameraScreen({ navigation }: RootTabScreenProps<'Locatio
                   : Camera.Constants.Type.back
               );
             }}>
-            <Text> Flip </Text>
+            <Text style={styles.text}> Flip </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              snap();
+            }}>
+            <Text style={styles.text}> Take </Text>
           </TouchableOpacity>
         </View>
       </Camera>
@@ -48,16 +75,23 @@ export default function CameraScreen({ navigation }: RootTabScreenProps<'Locatio
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  camera: {
+    flex: 1,
+  },
+  buttonContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    margin: 20,
+  },
+  button: {
+    flex: 0.1,
+    alignSelf: 'flex-end',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  text: {
+    fontSize: 18,
+    color: 'white',
   },
 });
