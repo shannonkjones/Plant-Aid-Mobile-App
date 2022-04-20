@@ -1,97 +1,66 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity } from 'react-native';
-
-import EditScreenInfo from '../components/EditScreenInfo';
+import React, { useState, useEffect } from 'react';
+import { Button, Image, Platform } from 'react-native';
 import { Text, View } from '../components/Themed';
-import { RootTabScreenProps } from '../types';
 
-import { Camera, CameraCapturedPicture } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 
-export default function CameraScreen({ navigation }: RootTabScreenProps<'Location'>) {
-	const [hasPermission, setHasPermission] = useState<boolean>();
-	const [type, setType] = useState(Camera.Constants.Type.back);
+export default function ImagePickerExample() {
+  const imagePickerOptions = {
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: false, // Editing appears to destroy EXIF data
+    quality: 1, // Best
+    exif: true, // According to docs, iOS will not include location data in EXIF, but Android does (may require enabling location in the camera app)
+  }
+  const [image, setImage] = useState<ImagePicker.ImageInfo>();
+  const [location, setLocation] = useState<string>();
 
-  const [camera, setCamera] = useState<Camera>();
-  const [photo, setPhoto] = useState<CameraCapturedPicture>();
+  const getLocation = (image: ImagePicker.ImageInfo) => {
+    let location = "Unknown";
+    if (image.exif && image.exif.GPSProcessingMethod) {
+      const lat = Math.abs(image.exif.GPSLatitude).toFixed(3);
+      const long = Math.abs(image.exif.GPSLongitude).toFixed(3);
+      location = `${lat}${image.exif.GPSLatitudeRef}, ${long}${image.exif.GPSLongitudeRef}`;
+    }
+    return location;
+  }
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  const pickImage = async () => {
+    // No permissions request is necessary for launching the image library
+    let result = await ImagePicker.launchImageLibraryAsync(imagePickerOptions);
 
-  const snap = async () => {
-    if (camera) {
-      let photo = await camera.takePictureAsync();
-      setPhoto(photo);
+    console.log(result);
+
+    if (!result.cancelled) {
+      setImage(result);
+      setLocation(getLocation(result));
+    }
+  };
+
+  const takeImage = async () => {
+    let cameraPermissions = await ImagePicker.getCameraPermissionsAsync();
+    console.log(cameraPermissions);
+    if (!cameraPermissions.granted) {
+      cameraPermissions = await ImagePicker.requestCameraPermissionsAsync();
+    }
+
+    if (cameraPermissions.granted) {
+      const result = await ImagePicker.launchCameraAsync(imagePickerOptions);
+
+      console.log(result);
+
+      if (!result.cancelled) {
+        setImage(result);
+        setLocation(getLocation(result));
+      }
     }
   }
 
-  if (hasPermission === null) {
-    return <View />;
-  }
-  if (hasPermission === false) {
-    return <Text>No access to camera</Text>;
-  }
-  if (photo) {
-    return 
-  }
-
   return (
-    <View style={styles.container}>
-      <Camera style={styles.camera}
-      type={type}
-      ref={ref => {
-        if (ref) {
-          setCamera(ref);
-        }
-      }}>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => {
-              setType(
-                type === Camera.Constants.Type.back
-                  ? Camera.Constants.Type.front
-                  : Camera.Constants.Type.back
-              );
-            }}>
-            <Text style={styles.text}> Flip </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => {
-              snap();
-            }}>
-            <Text style={styles.text}> Take </Text>
-          </TouchableOpacity>
-        </View>
-      </Camera>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <Button title="Pick an image from camera roll" onPress={pickImage} />
+      <Button title="Take a new picture" onPress={takeImage} />
+      {image && <Image source={{ uri: image.uri }} style={{ width: 200, height: 200 }} />}
+      {image && <Text>{location}</Text>}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  camera: {
-    flex: 1,
-  },
-  buttonContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    margin: 20,
-  },
-  button: {
-    flex: 0.1,
-    alignSelf: 'flex-end',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 18,
-    color: 'white',
-  },
-});
